@@ -32,4 +32,5 @@ flowchart LR
     I --> J[10. Subquery]
 ```
 
+
 GitHub ya Cursor me yeh mermaid diagrams **automatically** draw ho jaate hain. Koi extra software nahi chahiye.
