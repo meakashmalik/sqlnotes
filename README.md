@@ -4,7 +4,7 @@ Yeh folder **SQL Server** sikhane ke liye hai. Pehle pictures dekho, phir chhota
 
 ## Kaise padhein
 
-1. **Cursor / VS Code** me `SQL-NOTES.md` kholo.
+1. **VS Code** me `SQL-NOTES.md` kholo.
 2. Preview on karo (`Ctrl + Shift + V`) taaki pictures aur diagrams dikhein.
 3. SQL copy karke **SQL Server Management Studio (SSMS)** me chalao.
 4. Practice queries `sql.text` me hain.
@@ -33,5 +33,6 @@ flowchart LR
     J --> K[11. Constraints]
     K --> L[12. SP RETURN / OUTPUT]
 ```
+
 
 GitHub ya Cursor me yeh mermaid diagrams **automatically** draw ho jaate hain. Koi extra software nahi chahiye.
