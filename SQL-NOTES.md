@@ -1,9 +1,9 @@
-# SQL Server — Aasaan Notes (Class 1 se aakhir tak)
+# SQL Server Notes (shuru se aakhir tak)
 
-> Socho database ek **school bag** hai.  
-> Uske andar **notebooks** (tables) hain.  
-> Har page ek **student** (row) hai.  
-> Page par naam, umar, class jaise **columns** hote hain.
+> Socho database ek **filing cabinet** hai.  
+> Uske andar **registers** (tables) hain.  
+> Har row ek **record** hai.  
+> Record par naam, salary, date jaise **columns** hote hain.
 
 Yeh notes **SQL Server** ke liye hain (SSMS me chalao).  
 Har chapter me: pehle picture → phir seedhi baat → phir SQL.
@@ -12,9 +12,9 @@ Har chapter me: pehle picture → phir seedhi baat → phir SQL.
 
 ## Index
 
-1. [Database aur Table](#1-database-aur-table--school-bag)
+1. [Database aur Table](#1-database-aur-table--filing-cabinet)
 2. [Column ka naam badalna](#2-column-ka-naam-badalna--sp_rename)
-3. [JOIN — do tables ko milana](#3-join--do-notebooks-ko-milana)
+3. [JOIN — do tables ko milana](#3-join--do-registers-ko-milana)
 4. [JOIN ke 5 types](#4-join-ke-5-types)
 5. [SELF JOIN](#5-self-join--employee-aur-manager)
 6. [CASE — if / else](#6-case--if--else-wali-magic)
@@ -29,23 +29,29 @@ Har chapter me: pehle picture → phir seedhi baat → phir SQL.
 15. [Filter aur sort](#15-filter-aur-sort--where-order-by-top)
 16. [GROUP BY](#16-group-by--teams-banao-phir-gino)
 17. [Subquery](#17-subquery--sawal-ke-andar-sawal)
+18. [Constraints](#18-constraints--rules-on-columns)
+    - [6 constraints](#6-constraints-ki-list)
+    - [Primary / Unique / Foreign](#1-primary-key)
+    - [Composite / Candidate / Alternate](#composite-key)
+    - [Sab constraints ek table me](#sab-6-constraints-ek-table-me--candidates)
+19. [SP RETURN vs OUTPUT](#19-sp-return-vs-output)
 
 ---
 
-## 1. Database aur Table — school bag
+## 1. Database aur Table — filing cabinet
 
-![Database = school bag, tables = notebooks](images/01-database-tables.png)
+![Database = filing cabinet, tables = registers](images/01-database-tables.png)
 
 ### Seedhi baat
 
-| Cheez | School me | SQL me |
+| Cheez | Office me | SQL me |
 |--------|-----------|--------|
-| School bag | Poora school ka data | `DATABASE` |
-| Notebook | Users ki list, countries ki list | `TABLE` |
-| Roll number | Kisi ka bhi duplicate nahi | `PRIMARY KEY` |
-| Class number | Doosri list ki taraf ishara | `FOREIGN KEY` |
-| Naya page likhna | Naya student add | `INSERT` |
-| Notebook banana | Table banana | `CREATE TABLE` |
+| Filing cabinet | Poora project ka data | `DATABASE` |
+| Register | Users ki list, countries ki list | `TABLE` |
+| Unique ID | Kisi ka bhi duplicate nahi | `PRIMARY KEY` |
+| Reference number | Doosri list ki taraf ishara | `FOREIGN KEY` |
+| Nayi row likhna | Naya record add | `INSERT` |
+| Register banana | Table banana | `CREATE TABLE` |
 
 ### Picture me relation
 
@@ -69,16 +75,16 @@ erDiagram
 Padho aise: **ek country ke kai users** ho sakte hain.  
 `tblusers.country` number `tblcountry.cid` se match karta hai.
 
-### Step 1 — bag banao
+### Step 1 — database banao
 
 ```sql
 CREATE DATABASE db5152_6826;
 USE db5152_6826;
 ```
 
-`USE` ka matlab: ab isi bag ke andar kaam karo.
+`USE` ka matlab: ab isi database ke andar kaam karo.
 
-### Step 2 — countries wali notebook
+### Step 2 — countries wali table
 
 ```sql
 CREATE TABLE tblcountry
@@ -88,13 +94,13 @@ CREATE TABLE tblcountry
 );
 ```
 
-**`IDENTITY`** = roll number khud likh jaata hai. Tumhe number nahi dena.
+**`IDENTITY`** = unique ID khud ban jaati hai. Tumhe number nahi dena.
 
 ```sql
 INSERT INTO tblcountry VALUES ('India'), ('Pakistan'), ('usa');
 ```
 
-Ab notebook aisi dikhegi:
+Ab table aisi dikhegi:
 
 | cid | cname |
 |-----|--------|
@@ -102,7 +108,7 @@ Ab notebook aisi dikhegi:
 | 2 | Pakistan |
 | 3 | usa |
 
-### Step 3 — users wali notebook
+### Step 3 — users wali table
 
 ```sql
 CREATE TABLE tblusers
@@ -112,7 +118,8 @@ CREATE TABLE tblusers
     gender  VARCHAR(50),
     salary  INT,
     dob     DATE,          -- YYYY-MM-DD
-    country INT            -- 1 = India, 2 = Pakistan, 3 = usa
+    country INT FOREIGN KEY REFERENCES tblcountry(cid)
+            -- sirf wahi number jo tblcountry.cid me maujood ho
 );
 ```
 
@@ -126,10 +133,15 @@ INSERT INTO tblusers VALUES ('tarun',  'transgender', 16000, '1993-10-04', 1);
 INSERT INTO tblusers VALUES ('mohan',  'transgender', 10000, '1997-10-04', 1);
 INSERT INTO tblusers VALUES ('iqbal',  'male',        14000, '1999-10-04', 2);
 INSERT INTO tblusers VALUES ('sohan',  'male',        15000, '1990-10-04', 2);
-INSERT INTO tblusers VALUES ('sunita', 'female',      19000, '1991-10-04', 1);
+INSERT INTO tblusers VALUES ('sunita',   'female', 19000, '1991-10-04', 1);
+INSERT INTO tblusers VALUES ('sumintra', 'female', 12000, '1991-10-04', NULL);
+INSERT INTO tblusers VALUES ('madhu',    'female', 19000, '1991-10-04', NULL);
 ```
 
 **Yaad rakho:** last number `country` hai, naam nahi. `1` matlab India.
+
+> FK hone par `country = 4` **error** dega jab tak Brazil table me na ho.  
+> `UPDATE tblusers SET country = 50 WHERE uid = 3` bhi error — `tblcountry` me 50 nahi hai.
 
 > Tip: data dekhne ke liye hamesha  
 > `SELECT * FROM tblusers;`  
@@ -139,7 +151,7 @@ INSERT INTO tblusers VALUES ('sunita', 'female',      19000, '1991-10-04', 1);
 
 ## 2. Column ka naam badalna — `sp_rename`
 
-Kabhi notebook ke heading ka naam galat likh diya? Mitao mat — **rename** karo.
+Kabhi column ka heading galat likh diya? Mitao mat — **rename** karo.
 
 ```sql
 -- Syntax: purana naam, naya naam
@@ -159,7 +171,7 @@ sp_rename 'tblcountry.name', 'cname';
 
 ---
 
-## 3. JOIN — do notebooks ko milana
+## 3. JOIN — do registers ko milana
 
 Alok ka `country = 1` hai. `1` ka matlab kya? `tblcountry` me jaao — **India**.
 
@@ -204,6 +216,14 @@ JOIN tblcountry AS C ON U.country = C.cid;
 ```
 
 `U` = users, `C` = country. Ab SQL confuse nahi hota.
+
+Dono columns ka naam `name` ho to GridView / result me **do `name`** dikhte hain — confuse. Alias do:
+
+```sql
+SELECT U.uid, U.name AS name1, U.gender, U.salary, U.dob, C.name AS name2
+FROM tblusers AS U
+JOIN tblcountry AS C ON U.cid = C.cid;
+```
 
 ---
 
@@ -274,7 +294,7 @@ Pattern: `Database.Schema.Table` — jaise ghar.gali.makaan.
 
 ![Self join: same table, two roles](images/03-self-join.png)
 
-Ek hi notebook ko **do baar** padho: ek baar employee, ek baar manager.
+Ek hi table ko **do baar** padho: ek baar employee, ek baar manager.
 
 ```sql
 CREATE TABLE Users
@@ -318,6 +338,14 @@ JOIN Users AS U2 ON U2.uid = U1.umanager;
 ```
 
 **Trick:** same table, do nicknames. `U1.umanager = U2.uid`.
+
+INNER JOIN me woh employee nahi aata jiska manager match na ho. Sab dikhane ke liye:
+
+```sql
+SELECT U1.uid, U1.uname, U1.uage, U2.uname AS ManagerName
+FROM Users AS U1
+FULL JOIN Users AS U2 ON U2.uid = U1.umanager;
+```
 
 ---
 
@@ -371,7 +399,23 @@ SET country = CASE
 END;
 ```
 
-> **Yaad rakho:** `ELSE` likhna = koi bacha `NULL` nahi hota.
+> **Yaad rakho:** `ELSE` likhna = koi value `NULL` nahi hoti.
+
+### Do columns ko aapas me swap
+
+Same type ki columns ek hi `UPDATE` me swap ho sakti hain:
+
+```sql
+UPDATE tblusers SET name = gender, gender = name;
+UPDATE tblusers SET name = gender, gender = name WHERE uid < 6;
+```
+
+Alag type swap nahi hota:
+
+```sql
+-- ERROR: name VARCHAR, salary INT
+UPDATE tblusers SET name = salary, salary = name;
+```
 
 ---
 
@@ -402,6 +446,13 @@ FROM tblusers;
 ```
 
 `CAST` aur `CONVERT` dono kaam same: **type badalna**.
+
+Column ke aage text chipkana:
+
+```sql
+SELECT ('User ' + CONVERT(VARCHAR(10), uid)) AS uid, name, gender, salary
+FROM tblusers;
+```
 
 Puri column ka type hi badalna ho (soch ke):
 
@@ -766,7 +817,7 @@ flowchart TB
 
 ## 15. Filter aur sort — WHERE, ORDER BY, TOP
 
-Pehle poori notebook mat padho. **Filter** = sirf woh pages jo chahiye. **Sort** = pages ko line me lagaao.
+Pehle poori table mat padho. **Filter** = sirf woh rows jo chahiye. **Sort** = rows ko line me lagaao.
 
 ```mermaid
 flowchart LR
@@ -816,7 +867,7 @@ SELECT TOP 3 * FROM tblusers ORDER BY salary DESC;  -- top 3 salary
 
 ![GROUP BY: teams by country, then count](images/07-group-by.png)
 
-Socho class me kids ko **country ke teams** me baithao, phir pucho: har team me kitne log? Average salary kya hai?
+Socho users ko **country ke groups** me baanto, phir pucho: har group me kitne log? Average salary kya hai?
 
 Yahi `GROUP BY` hai.
 
@@ -953,6 +1004,289 @@ Yahan andar wala query **bahar wale `U.country`** ko dekhta hai. Isliye har user
 
 ---
 
+## 18. Constraints — rules on columns
+
+![Primary Key vs Unique vs Foreign Key](images/09-constraints.png)
+
+Constraint = column par **rule**. Rule tootega to SQL **error** dega, data save nahi hoga.
+
+### 6 constraints ki list
+
+| # | Constraint | Seedhi baat |
+|---|------------|-------------|
+| 1 | `PRIMARY KEY` | Row ka unique ID. Duplicate nahi, NULL nahi. |
+| 2 | `UNIQUE` | Duplicate nahi. **Ek** NULL chalega. |
+| 3 | `FOREIGN KEY` | Doosri table ke PK ko point. |
+| 4 | `NOT NULL` | Column khali nahi chhod sakte. |
+| 5 | `DEFAULT` | Value na do to automatic value. |
+| 6 | `CHECK` | Condition true honi chahiye. |
+
+---
+
+### 1) PRIMARY KEY
+
+| Rule | Matlab |
+|------|--------|
+| Ek table me **ek** hi PK | Do alag `PRIMARY KEY` likhoge to error |
+| Duplicate nahi | Wahi `id` do baar nahi |
+| NULL nahi | `id` chhod ke insert fail |
+| **Clustered index** | Data **line me** store hota hai |
+
+**Clustered index:** insert `3, 4, 1, 2` kiya to table me physically **`1, 2, 3, 4`** order me padega. Jaise roll-call list hamesha sort rehti hai.
+
+```sql
+CREATE TABLE Emp2 (id INT PRIMARY KEY, name VARCHAR(50), age INT);
+
+INSERT INTO Emp2 VALUES (3, 'alok', 30);
+INSERT INTO Emp2 VALUES (1, 'mohan', 24);
+INSERT INTO Emp2 VALUES (4, 'sohan', 28);
+INSERT INTO Emp2 VALUES (2, 'javed', 32);
+-- INSERT INTO Emp2 VALUES (2, 'akash', 24);           -- ERROR: duplicate
+-- INSERT INTO Emp2 (name, age) VALUES ('monika', 24); -- ERROR: NULL
+```
+
+Bina constraint (Emp1) dono kaam **OK** hain — duplicate bhi, NULL bhi.
+
+```sql
+CREATE TABLE Emp1 (id INT, name VARCHAR(50), age INT);
+INSERT INTO Emp1 VALUES (2, 'akash', 24);              -- OK
+INSERT INTO Emp1 (name, age) VALUES ('monika', 24);    -- OK
+```
+
+---
+
+### 2) UNIQUE KEY
+
+| Rule | Matlab |
+|------|--------|
+| Ek table me **kai** unique keys | `aadhar` unique, `pancard` unique |
+| Duplicate nahi | Wahi aadhar do baar nahi |
+| **Ek** NULL chalega | Doosra NULL error |
+| Clustered index **nahi** | PK clustered leta hai; unique alag index |
+
+```sql
+CREATE TABLE Emp3 (id INT UNIQUE, name VARCHAR(50), age INT);
+
+INSERT INTO Emp3 VALUES (2, 'javed', 32);
+-- INSERT INTO Emp3 VALUES (2, 'akash', 24);           -- ERROR: duplicate
+INSERT INTO Emp3 (name, age) VALUES ('monika', 24);    -- OK: pehla NULL
+-- INSERT INTO Emp3 (name, age) VALUES ('sonia', 24);  -- ERROR: doosra NULL
+```
+
+---
+
+### 3) FOREIGN KEY
+
+| Rule | Matlab |
+|------|--------|
+| Ek table me **kai** FK ho sakte hain | `country`, `deptid` ... |
+| Duplicate **OK** | Kai users ka `country = 1` |
+| Kai NULL **OK** | `sumintra`, `madhu` bina country |
+| Index khud nahi banta | |
+
+```sql
+country INT FOREIGN KEY REFERENCES tblcountry(cid)
+```
+
+```sql
+INSERT INTO tblusers VALUES ('madhu', 'female', 19000, '1991-10-04', NULL); -- OK
+-- UPDATE tblusers SET country = 50 WHERE uid = 3;  -- ERROR: 50 list me nahi
+```
+
+---
+
+### 4) NOT NULL   5) DEFAULT   6) CHECK
+
+| Constraint | Example | Fail kab |
+|------------|---------|----------|
+| `NOT NULL` | `name VARCHAR(50) NOT NULL` | `name` na do |
+| `DEFAULT` | `age INT DEFAULT 18` | Age na do → 18 lag jaata hai |
+| `CHECK` | `salary INT CHECK (salary >= 10000)` | Salary 9999 |
+
+---
+
+### Composite Key
+
+Alag constraint nahi hai. **2+ columns milkar ek Primary Key** banate hain. Dono combine karke row unique hoti hai.
+
+```sql
+PRIMARY KEY (id, aadhar)
+```
+
+Agar `id = 1` do baar ho, lekin `aadhar` alag ho — chalega.  
+Agar **dono same** hon — error.
+
+```mermaid
+flowchart LR
+    A["id = 1"] --> C["Composite PK"]
+    B["aadhar = 123"] --> C
+    C --> D["Yeh combo unique"]
+```
+
+---
+
+### Candidate Key
+
+Jo bhi column (ya combo) row ko **uniquely identify** kar sake, aur PK ban *sakta* ho — woh **Candidate Key** hai.
+
+Ek table me kai candidate keys ho sakti hain. Unme se **ek** ko PK banate hain.
+
+Example: `id`, `email`, `phone` — teeno unique → teeno candidate.
+
+---
+
+### Alternate Key
+
+Candidate keys me se **jo PK nahi bani**, woh **Alternate Key** hain.
+
+```text
+Candidate Keys :  id, email, phone
+        ↓ ek select
+Primary Key    :  id
+Alternate Keys :  email, phone
+```
+
+Election se: kai candidates khade → Candidate Keys.  
+Ek jeet gaya → Primary Key.  
+Baaki → Alternate Keys.
+
+![Candidate → Primary → Alternate](images/10-keys-candidate-primary.png)
+
+```mermaid
+flowchart TB
+    C[Kai Candidate Keys]
+    C --> P[Ek selected = Primary Key]
+    C --> A[Baaki = Alternate Keys]
+```
+
+---
+
+### Interview: do Primary Key?
+
+| Sawal | Jawab |
+|--------|--------|
+| Kya ek table me **do Primary Key** bana sakte ho? | **Nahi.** Ek table = **ek** PK constraint. |
+| Kya **do columns** par Primary Key laga sakte ho? | **Haan.** Wahi Composite Key. Ek key, do columns. |
+
+```sql
+-- ERROR: do baar PRIMARY KEY likha
+CREATE TABLE Emp5
+(
+    id     INT PRIMARY KEY IDENTITY,
+    name   VARCHAR(50),
+    aadhar BIGINT PRIMARY KEY,
+    age    INT
+);
+
+-- OK: ek composite PK
+CREATE TABLE Emp6
+(
+    id     INT IDENTITY,
+    name   VARCHAR(50),
+    aadhar BIGINT,
+    age    INT,
+    PRIMARY KEY (id, aadhar)
+);
+```
+
+---
+
+### Sab 6 constraints ek table me — `candidates`
+
+```sql
+CREATE TABLE candidates
+(
+    id      INT PRIMARY KEY IDENTITY,          -- 1 PK
+    name    VARCHAR(50) NOT NULL,              -- 4 NOT NULL
+    aadhar  BIGINT UNIQUE NOT NULL,            -- 2 UNIQUE + NOT NULL
+    pancard VARCHAR(50) UNIQUE NOT NULL,       -- 2 UNIQUE (doosri)
+    salary  INT CHECK (salary >= 10000),       -- 6 CHECK
+    age     INT DEFAULT 18,                    -- 5 DEFAULT
+    country INT FOREIGN KEY REFERENCES tblcountry(cid)  -- 3 FK
+);
+```
+
+Yahan **candidate keys:** `id`, `aadhar`, `pancard`.  
+**Primary:** `id`. **Alternate:** `aadhar`, `pancard`.
+
+```sql
+INSERT INTO candidates (name, aadhar, pancard, salary, age, country) VALUES
+('Rahul Kumar',  123456789012, 'ABCDE1234F', 25000, 22, 1),
+('Amit Sharma',  234567890123, 'BCDEF2345G', 30000, 25, 2),
+('Priya Singh',  345678901234, 'CDEFG3456H', 28000, 24, 3),
+('Neha Verma',   456789012345, 'DEFGH4567J', 35000, 27, 4),
+('Rohit Gupta',  567890123456, 'EFGHI5678K', 22000, 21, 1);
+
+-- age nahi di → DEFAULT 18
+INSERT INTO candidates (name, aadhar, pancard, salary, country)
+VALUES ('Karan Malhotra', 901234567890, 'IJKLM9012P', 20000, 1);
+
+-- salary nahi di → NULL (NOT NULL nahi hai)
+INSERT INTO candidates (name, aadhar, pancard, country)
+VALUES ('Pooja Sharma', 912345678901, 'JKLMN0123Q', 2);
+
+-- ERROR examples:
+-- INSERT ... salary = 5000     -- CHECK fail
+-- INSERT ... name = NULL       -- NOT NULL fail
+-- INSERT ... country = 99      -- FK fail
+```
+
+---
+
+## 19. SP RETURN vs OUTPUT
+
+Function `RETURNS` kisi bhi type ka value de sakta hai.  
+**Stored procedure ka `RETURN` sirf INT** hota hai.
+
+```sql
+-- OK: INT return
+CREATE PROCEDURE sp3 @uid INT
+AS
+BEGIN
+    DECLARE @a INT;
+    SELECT @a = salary FROM tblusers WHERE uid = @uid;
+    RETURN @a;
+END;
+
+DECLARE @x INT;
+EXEC @x = sp3 7;
+PRINT @x;
+```
+
+```sql
+-- ERROR: RETURN VARCHAR nahi ho sakta
+CREATE PROCEDURE sp4 @uid INT
+AS
+BEGIN
+    DECLARE @a VARCHAR(50);
+    SELECT @a = name FROM tblusers WHERE uid = @uid;
+    RETURN @a;   -- fail
+END;
+```
+
+Text / kai values ke liye **OUTPUT** (ya `OUT`) use karo:
+
+```sql
+CREATE PROC sp7
+    @uid INT,
+    @m   VARCHAR(50) OUT,
+    @n   INT OUT
+AS
+BEGIN
+    SELECT @m = name, @n = salary FROM tblusers WHERE uid = @uid;
+END;
+
+DECLARE @x VARCHAR(50), @y INT;
+EXEC sp7 7, @x OUT, @y OUT;
+PRINT @x;
+PRINT @y;
+```
+
+Class style functions: `fn1` (age), `fn2` (grade), `fn3` (gender 1/2/3 → text), `fn4` (annual).  
+`fn3` tabhi chalega jab `gender` column **INT** ho. Table me `'male'` text hai to `dbo.fn3(gender)` error dega.
+
+---
+
 ## Roz ka cheat-sheet
 
 ```sql
@@ -976,7 +1310,7 @@ SELECT gender, COUNT(*) FROM tblusers GROUP BY gender;
 
 ---
 
-## Practice order ( plan)
+## Practice order
 
 1. Tables banao, `SELECT *` se dekho.  
 2. India ke users nikaalo (`WHERE country = 1`).  
@@ -988,6 +1322,10 @@ SELECT gender, COUNT(*) FROM tblusers GROUP BY gender;
 8. Insert SP chalao.  
 9. Trigger ke baad audit table check karo.  
 10. `GROUP BY gender` se ginti nikaalo.  
-11. Average se zyada salary wale subquery se dhoondho.
+11. Average se zyada salary wale subquery se dhoondho.  
+12. Emp1 / Emp2 / Emp3 se PK vs Unique test karo.  
+13. `candidates` me DEFAULT age aur CHECK salary try karo.  
+14. Emp5 (do PK) error vs Emp6 (composite PK) OK.  
+15. `RETURN` se VARCHAR nikaalne ki error dekho, phir `OUTPUT` use karo.
 
 SQL copy-paste ke liye **`sql.text`** kholo.

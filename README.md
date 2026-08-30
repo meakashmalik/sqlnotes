@@ -1,4 +1,4 @@
-# SQL Notes — Bachchon ke liye SQL Server
+# SQL Server Notes
 
 Yeh folder **SQL Server** sikhane ke liye hai. Pehle pictures dekho, phir chhota example, phir SQL.
 
@@ -13,9 +13,9 @@ Yeh folder **SQL Server** sikhane ke liye hai. Pehle pictures dekho, phir chhota
 
 | File | Kya hai |
 |------|---------|
-| [SQL-NOTES.md](SQL-NOTES.md) | Poora lesson — pictures, diagrams, easy Hindi |
+| [SQL-NOTES.md](SQL-NOTES.md) | Poora lesson — pictures, diagrams, Hindi explanation |
 | [sql.text](sql.text) | Sirf SQL practice (copy-paste) |
-| `images/` | Join, GROUP BY, subquery, trigger ki pictures |
+| `images/` | Join, GROUP BY, keys, trigger, constraints ki pictures |
 
 ## Kya seekhoge
 
@@ -30,6 +30,8 @@ flowchart LR
     G --> H[8. View / SP / Trigger]
     H --> I[9. GROUP BY]
     I --> J[10. Subquery]
+    J --> K[11. Constraints]
+    K --> L[12. SP RETURN / OUTPUT]
 ```
 
 GitHub ya Cursor me yeh mermaid diagrams **automatically** draw ho jaate hain. Koi extra software nahi chahiye.

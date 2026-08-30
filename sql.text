@@ -4,7 +4,7 @@
    ============================================================ */
 
 
-/* ---------- 1. BAG AUR NOTEBOOKS ---------- */
+/* ---------- 1. DATABASE AUR TABLES ---------- */
 
 CREATE DATABASE db5152_6826;
 GO
@@ -28,7 +28,7 @@ CREATE TABLE tblusers
     gender  VARCHAR(50),
     salary  INT,
     dob     DATE,
-    country INT
+    country INT FOREIGN KEY REFERENCES tblcountry(cid)
 );
 
 INSERT INTO tblusers VALUES ('alok',   'male',        13000, '1984-10-04', 1);
@@ -40,7 +40,12 @@ INSERT INTO tblusers VALUES ('tarun',  'transgender', 16000, '1993-10-04', 1);
 INSERT INTO tblusers VALUES ('mohan',  'transgender', 10000, '1997-10-04', 1);
 INSERT INTO tblusers VALUES ('iqbal',  'male',        14000, '1999-10-04', 2);
 INSERT INTO tblusers VALUES ('sohan',  'male',        15000, '1990-10-04', 2);
-INSERT INTO tblusers VALUES ('sunita', 'female',      19000, '1991-10-04', 1);
+INSERT INTO tblusers VALUES ('sunita',   'female', 19000, '1991-10-04', 1);
+INSERT INTO tblusers VALUES ('sumintra', 'female', 12000, '1991-10-04', NULL);
+INSERT INTO tblusers VALUES ('madhu',    'female', 19000, '1991-10-04', NULL);
+
+-- ERROR jab tak Brazil na ho: INSERT ... seema ... country = 4
+-- ERROR: UPDATE tblusers SET country = 50 WHERE uid = 3;
 
 SELECT * FROM tblcountry;
 SELECT * FROM tblusers;
@@ -67,16 +72,17 @@ SELECT * FROM tblusers JOIN tblcountry ON country = cid;
 -- Sahi tarika: nickname U aur C
 SELECT
     U.uid,
-    U.name  AS UserName,
+    U.name  AS name1,
     U.gender,
     U.salary,
     U.dob,
-    C.cname AS CountryName
+    C.cname AS name2
 FROM tblusers   AS U
 JOIN tblcountry AS C ON U.country = C.cid;
 
 -- Galat (mat chalao): dono tables me same naam ho to error
 -- SELECT uid, name FROM tblusers JOIN tblcountry ON cid = cid;
+-- GridView me dono columns "name" dikhte hain — alias zaroori hai
 
 
 
@@ -139,6 +145,10 @@ SELECT
 FROM Users AS U1
 JOIN Users AS U2 ON U2.uid = U1.umanager;
 
+SELECT U1.uid, U1.uname, U1.uage, U2.uname AS ManagerName
+FROM Users AS U1
+FULL JOIN Users AS U2 ON U2.uid = U1.umanager;
+
 
 
 /* ---------- 6. CASE  (hamesha ELSE likho) ---------- */
@@ -172,6 +182,10 @@ SET country = CASE
     ELSE country
 END;
 
+-- same type swap OK; INT/VARCHAR swap ERROR
+UPDATE tblusers SET name = gender, gender = name WHERE uid < 6;
+-- UPDATE tblusers SET name = salary, salary = name;
+
 
 
 /* ---------- 7. TEXT JODNA ---------- */
@@ -182,6 +196,7 @@ SELECT name + SPACE(10) + gender AS UserDetails FROM tblusers;
 -- number ko pehle text banao
 SELECT name + SPACE(5) + gender + SPACE(5) + CONVERT(VARCHAR(50), salary) FROM tblusers;
 SELECT name + SPACE(5) + gender + SPACE(5) + CAST(salary AS VARCHAR(50)) FROM tblusers;
+SELECT ('User ' + CONVERT(VARCHAR(10), uid)) AS uid, name, gender, salary FROM tblusers;
 
 -- poori column ka type badalna (soch ke)
 -- ALTER TABLE tblusers ALTER COLUMN salary VARCHAR(50);
@@ -464,3 +479,129 @@ WHERE U.salary > (
     FROM tblusers X
     WHERE X.country = U.country
 );
+
+
+
+/* ---------- 18. CONSTRAINTS ---------- */
+-- 1 PK  2 UNIQUE  3 FK  4 NOT NULL  5 DEFAULT  6 CHECK
+-- Clustered index: insert 3,4,1,2 → store 1,2,3,4
+
+-- Emp1: koi rule nahi
+CREATE TABLE Emp1 (id INT, name VARCHAR(50), age INT);
+INSERT INTO Emp1 VALUES (3,'alok',30),(1,'mohan',24),(4,'sohan',28),(2,'javed',32);
+INSERT INTO Emp1 VALUES (2,'akash',24);                 -- OK duplicate
+INSERT INTO Emp1 (name, age) VALUES ('monika', 24);     -- OK NULL id
+
+-- Emp2: PRIMARY KEY  (duplicate nahi, NULL nahi, clustered)
+CREATE TABLE Emp2 (id INT PRIMARY KEY, name VARCHAR(50), age INT);
+INSERT INTO Emp2 VALUES (3,'alok',30),(1,'mohan',24),(4,'sohan',28),(2,'javed',32);
+-- INSERT INTO Emp2 VALUES (2,'akash',24);              -- ERROR duplicate
+-- INSERT INTO Emp2 (name, age) VALUES ('monika', 24);  -- ERROR NULL
+
+-- Emp3: UNIQUE  (ek NULL chalega, clustered nahi)
+CREATE TABLE Emp3 (id INT UNIQUE, name VARCHAR(50), age INT);
+INSERT INTO Emp3 VALUES (3,'alok',30),(1,'mohan',24),(4,'sohan',28),(2,'javed',32);
+-- INSERT INTO Emp3 VALUES (2,'akash',24);              -- ERROR duplicate
+INSERT INTO Emp3 (name, age) VALUES ('monika', 24);     -- OK pehla NULL
+-- INSERT INTO Emp3 (name, age) VALUES ('sonia', 24);   -- ERROR doosra NULL
+
+-- Emp5 ERROR: do PRIMARY KEY
+-- CREATE TABLE Emp5 (
+--     id INT PRIMARY KEY IDENTITY, name VARCHAR(50),
+--     aadhar BIGINT PRIMARY KEY, age INT
+-- );
+
+-- Emp6 OK: COMPOSITE PK (id + aadhar)
+CREATE TABLE Emp6
+(
+    id     INT IDENTITY,
+    name   VARCHAR(50),
+    aadhar BIGINT,
+    age    INT,
+    PRIMARY KEY (id, aadhar)
+);
+
+-- Sab 6 constraints ek saath
+CREATE TABLE candidates
+(
+    id      INT PRIMARY KEY IDENTITY,
+    name    VARCHAR(50) NOT NULL,
+    aadhar  BIGINT UNIQUE NOT NULL,
+    pancard VARCHAR(50) UNIQUE NOT NULL,
+    salary  INT CHECK (salary >= 10000),
+    age     INT DEFAULT 18,
+    country INT FOREIGN KEY REFERENCES tblcountry(cid)
+);
+
+INSERT INTO candidates (name, aadhar, pancard, salary, age, country) VALUES
+('Rahul Kumar',  123456789012, 'ABCDE1234F', 25000, 22, 1),
+('Amit Sharma',  234567890123, 'BCDEF2345G', 30000, 25, 2),
+('Priya Singh',  345678901234, 'CDEFG3456H', 28000, 24, 3),
+('Neha Verma',   456789012345, 'DEFGH4567J', 35000, 27, 4),
+('Rohit Gupta',  567890123456, 'EFGHI5678K', 22000, 21, 1),
+('Anjali Yadav', 678901234567, 'FGHIJ6789L', 32000, 26, 2),
+('Vikas Mehra',  789012345678, 'GHIJK7890M', 40000, 30, 3),
+('Sneha Kapoor', 890123456789, 'HIJKL8901N', 27000, 23, 4);
+
+-- age nahi → DEFAULT 18
+INSERT INTO candidates (name, aadhar, pancard, salary, country)
+VALUES ('Karan Malhotra', 901234567890, 'IJKLM9012P', 20000, 1);
+
+-- salary nahi → NULL (optional)
+INSERT INTO candidates (name, aadhar, pancard, country)
+VALUES ('Pooja Sharma', 912345678901, 'JKLMN0123Q', 2);
+
+-- UPDATE tblusers SET country = 50 WHERE uid = 3;  -- FK fail
+
+
+
+/* ---------- 19. CLASS SP: RETURN INT vs OUTPUT ---------- */
+
+CREATE PROCEDURE sp1 @dob DATE
+AS
+BEGIN
+    DECLARE @age INT;
+    SELECT @age = DATEDIFF(YEAR, @dob, GETDATE());
+    RETURN @age;
+END;
+GO
+
+DECLARE @a INT;
+EXEC @a = sp1 '1994-01-01';
+PRINT @a;
+
+
+CREATE PROCEDURE sp3 @uid INT
+AS
+BEGIN
+    DECLARE @a INT;
+    SELECT @a = salary FROM tblusers WHERE uid = @uid;
+    RETURN @a;
+END;
+GO
+
+DECLARE @x INT;
+EXEC @x = sp3 7;
+PRINT @x;
+
+-- sp4 ERROR: RETURN sirf INT, VARCHAR nahi
+-- CREATE PROCEDURE sp4 @uid INT AS BEGIN
+--     DECLARE @a VARCHAR(50);
+--     SELECT @a = name FROM tblusers WHERE uid = @uid;
+--     RETURN @a;
+-- END;
+
+CREATE PROC sp7
+    @uid INT,
+    @m   VARCHAR(50) OUT,
+    @n   INT OUT
+AS
+BEGIN
+    SELECT @m = name, @n = salary FROM tblusers WHERE uid = @uid;
+END;
+GO
+
+DECLARE @nx VARCHAR(50), @ny INT;
+EXEC sp7 7, @nx OUT, @ny OUT;
+PRINT @nx;
+PRINT @ny;
