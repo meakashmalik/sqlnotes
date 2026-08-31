@@ -5,8 +5,8 @@
 > Har row ek **record** hai.  
 > Record par naam, salary, date jaise **columns** hote hain.
 
-Yeh notes **SQL Server** ke liye hain (SSMS me chalao).  
-Har chapter me: pehle picture → phir seedhi baat → phir SQL.
+Poori kahani + pictures: [SQL-NOTES.md](SQL-NOTES.md)  
+Interview Q&A (CRUD, 3rd salary, duplicates, WHILE, triggers…): [SQL-INTERVIEW.md](SQL-INTERVIEW.md)
 
 ---
 
@@ -29,12 +29,14 @@ Har chapter me: pehle picture → phir seedhi baat → phir SQL.
 15. [Filter aur sort](#15-filter-aur-sort--where-order-by-top)
 16. [GROUP BY](#16-group-by--teams-banao-phir-gino)
 17. [Subquery](#17-subquery--sawal-ke-andar-sawal)
+    - [Nth salary (interview)](#interview-3rd-highest--4th-lowest-salary)
 18. [Constraints](#18-constraints--rules-on-columns)
     - [6 constraints](#6-constraints-ki-list)
     - [Primary / Unique / Foreign](#1-primary-key)
     - [Composite / Candidate / Alternate](#composite-key)
     - [Sab constraints ek table me](#sab-6-constraints-ek-table-me--candidates)
 19. [SP RETURN vs OUTPUT](#19-sp-return-vs-output)
+20. [Transaction + TRY/CATCH](#20-transaction--trycatch)
 
 ---
 
@@ -847,12 +849,40 @@ SELECT * FROM tblusers WHERE country IN (1, 2);     -- India ya Pakistan
 ### ORDER BY — line me lagaao
 
 ```sql
-SELECT * FROM tblusers ORDER BY salary;           -- chhoti se badi
+SELECT * FROM tblusers;
+SELECT * FROM tblusers ORDER BY name;
+SELECT * FROM tblusers ORDER BY salary;           -- ASC (default)
+SELECT * FROM tblusers ORDER BY salary ASC;       -- chhoti se badi
 SELECT * FROM tblusers ORDER BY salary DESC;      -- badi se chhoti
 SELECT * FROM tblusers ORDER BY country, salary DESC;
 ```
 
-`ASC` = chhota pehle (default), `DESC` = bada pehle.
+`ASC` = chhota pehle (likho ya na likho, default yahi). `DESC` = bada pehle.
+
+### Pehle 2 records — `uid` pata ho
+
+```sql
+SELECT * FROM tblusers WHERE uid = 1 OR uid = 2;
+SELECT * FROM tblusers WHERE uid IN (1, 2);   -- same baat, chhota
+```
+
+### TOP — `uid` / naam na pata ho
+
+SQL Server me **`BOTTOM` keyword nahi hota**.
+
+```sql
+SELECT TOP (3) * FROM tblusers;   -- table ke pehle 3 (order na ho to unreliable)
+```
+
+Last 3 chahiye to pehle ulta sort, phir TOP:
+
+```sql
+-- 1) table ko ulta
+SELECT * FROM tblusers ORDER BY uid DESC;
+
+-- 2) last 3 = TOP 3 after DESC
+SELECT TOP (3) * FROM tblusers ORDER BY uid DESC;
+```
 
 ### DISTINCT aur TOP
 
@@ -883,15 +913,23 @@ flowchart TB
 
 ### 5 machine words (aggregates)
 
+Poori table par ek number nikaalte hain. `GROUP BY` ke bina **ek hi row** aati hai.
+
 | Function | Kya karta hai |
 |----------|----------------|
-| `COUNT(*)` | kitni rows |
+| `MAX(salary)` | sabse badi |
+| `MIN(salary)` | sabse chhoti |
 | `SUM(salary)` | total |
 | `AVG(salary)` | average |
-| `MIN(salary)` | sabse chhoti |
-| `MAX(salary)` | sabse badi |
+| `COUNT(salary)` | kitni rows (NULL skip) |
+| `COUNT(*)` | kitni rows (NULL bhi) |
 
 ```sql
+SELECT MAX(salary) FROM tblusers;
+SELECT MIN(salary) FROM tblusers;
+SELECT SUM(salary) FROM tblusers;
+SELECT AVG(salary) FROM tblusers;
+SELECT COUNT(salary) AS count_salary FROM tblusers;
 SELECT COUNT(*) AS TotalUsers FROM tblusers;
 SELECT SUM(salary) AS TotalPay, AVG(salary) AS AvgPay FROM tblusers;
 SELECT MIN(salary) AS Lowest, MAX(salary) AS Highest FROM tblusers;
@@ -965,17 +1003,20 @@ Pehle andar wala sawal, uska jawab bahar wale sawal me.
 ### Kaunsi sabse zyada salary?
 
 ```sql
-SELECT MAX(salary) FROM tblusers;              -- andar: 19000
-SELECT * FROM tblusers
-WHERE salary = (SELECT MAX(salary) FROM tblusers);  -- sunita
+SELECT MAX(salary) FROM tblusers;   -- andar: number (jaise 19000)
+
+SELECT name FROM tblusers
+WHERE salary = (SELECT MAX(salary) FROM tblusers);
 ```
 
-### Average se zyada kamane wale
+### Average se zyada / kam
 
 ```sql
-SELECT name, salary
-FROM tblusers
+SELECT * FROM tblusers
 WHERE salary > (SELECT AVG(salary) FROM tblusers);
+
+SELECT name FROM tblusers
+WHERE salary < (SELECT AVG(salary) FROM tblusers);
 ```
 
 ### IN — list ke andar
@@ -1001,6 +1042,73 @@ WHERE U.salary > (
 ```
 
 Yahan andar wala query **bahar wale `U.country`** ko dekhta hai. Isliye har user ke liye alag average.
+
+### Interview: 3rd highest / 4th lowest salary
+
+Andar wali query ko ek **temporary table `A`** maan lo. `DISTINCT` duplicate salary hataata hai (do log same salary → ek hi rank).
+
+```mermaid
+flowchart TB
+    T[tblusers salaries] --> D[DISTINCT + TOP 3 DESC]
+    D --> A[Table A = top 3 unique salaries]
+    A --> M[MIN of A = 3rd highest]
+    A --> T1[TOP 1 of A ASC = 3rd highest without aggregate]
+```
+
+**3rd highest — aggregate ke saath** (`MIN` of top 3 DESC):
+
+```sql
+SELECT MIN(salary)
+FROM (
+    SELECT DISTINCT TOP (3) salary
+    FROM tblusers
+    ORDER BY salary DESC
+) AS A;
+```
+
+**3rd highest — bina aggregate** (same salary duplicate ho to bhi `DISTINCT`):
+
+```sql
+SELECT TOP (1) salary
+FROM (
+    SELECT DISTINCT TOP (3) salary
+    FROM tblusers
+    ORDER BY salary DESC
+) AS A
+ORDER BY salary ASC;
+```
+
+Trick: pehle 3 sabse badi unique salaries lao, unme se **chhoti** = 3rd highest.
+
+**4th lowest — aggregate ke saath** (`MAX` of top 4 ASC):
+
+```sql
+SELECT MAX(salary)
+FROM (
+    SELECT DISTINCT TOP (4) salary
+    FROM tblusers
+    ORDER BY salary
+) AS A;
+```
+
+**4th lowest — bina aggregate:**
+
+```sql
+SELECT TOP (1) salary
+FROM (
+    SELECT DISTINCT TOP (4) salary
+    FROM tblusers
+    ORDER BY salary
+) AS A
+ORDER BY salary DESC;
+```
+
+Pattern yaad rakhna:
+
+| Chahiye | Andar | Bahar |
+|---------|--------|--------|
+| Nth **highest** | `DISTINCT TOP (N) ... ORDER BY salary DESC` | `MIN` ya `TOP 1 ... ASC` |
+| Nth **lowest** | `DISTINCT TOP (N) ... ORDER BY salary ASC` | `MAX` ya `TOP 1 ... DESC` |
 
 ---
 
@@ -1287,7 +1395,133 @@ Class style functions: `fn1` (age), `fn2` (grade), `fn3` (gender 1/2/3 → text)
 
 ---
 
-## Roz ka cheat-sheet
+## 20. Transaction + TRY/CATCH
+
+Bina transaction ke `INSERT` / `UPDATE` / `DELETE` **turant permanent** ho jaate hain.
+
+Transaction = kaam **bundle**. Permanent tab, jab `COMMIT`. Error aayi to `ROLLBACK` — jaise kuch hua hi nahi.
+
+**Use:** money transfer — ek account se kata, doosre me add. Ya dono, ya koi nahi. Adha kaam nahi.
+
+```mermaid
+flowchart TB
+    S[BEGIN TRANSACTION]
+    S --> U1[UPDATE from: -amount]
+    U1 --> U2[UPDATE to: +amount]
+    U2 --> OK{Error?}
+    OK -->|Nahi| C[COMMIT — dono save]
+    OK -->|Haan| R[ROLLBACK — dono undo]
+```
+
+### Bank table
+
+```sql
+DROP TABLE IF EXISTS tblbank;
+
+CREATE TABLE tblbank
+(
+    bankid   INT PRIMARY KEY IDENTITY,
+    bankname VARCHAR(50),
+    accname  VARCHAR(50),
+    accno    INT UNIQUE NOT NULL,
+    amount   INT
+);
+
+INSERT INTO tblbank VALUES
+('PNB',    'Akash',    101, 56000),
+('Canara', 'Abhishek', 102, 40000),
+('SBI',    'Surya',    103, 50000);
+
+SELECT * FROM tblbank;
+```
+
+### Step 1 — sirf do UPDATE (khatra)
+
+Dono chal gaye to theek. Beech me error ho to **pehla UPDATE save**, doosra nahi.
+
+```sql
+CREATE PROCEDURE moneytransfer
+    @fromacc INT,
+    @toacc   INT,
+    @amt     INT
+AS
+BEGIN
+    UPDATE tblbank SET amount = amount - @amt WHERE accno = @fromacc;
+    UPDATE tblbank SET amount = amount + @amt WHERE accno = @toacc;
+END;
+```
+
+### Step 2 — TRY / CATCH (exception handling)
+
+Error par `CATCH` me jaao. **Lekin** pehla UPDATE pehle hi save ho chuka ho sakta hai.
+
+```sql
+ALTER PROCEDURE moneytransfer
+    @fromacc INT,
+    @toacc   INT,
+    @amt     INT
+AS
+BEGIN
+    BEGIN TRY
+        UPDATE tblbank SET amount = amount - @amt WHERE accno = @fromacc;
+        UPDATE tblbank SET amount = amount + @amt WHERE accno = @toacc;
+        PRINT 'Transaction Successful !!';
+    END TRY
+    BEGIN CATCH
+        PRINT 'Transaction Failed !!';
+    END CATCH
+END;
+```
+
+Galat test (doosri line me string `'mohan'` — `accno` INT hai → error):
+
+```sql
+-- CATCH me jaayega, lekin 101 se paise KAT CHUKE honge
+UPDATE ... WHERE accno = @fromacc;
+UPDATE ... WHERE accno = 'mohan';   -- error
+```
+
+`EXEC moneytransfer 101, 102, 20000` → print Failed, **phir bhi 101 ka balance kam**.
+
+### Step 3 — BEGIN TRAN + COMMIT + ROLLBACK
+
+Ab pehla UPDATE bhi undo ho jaata hai.
+
+```sql
+ALTER PROCEDURE moneytransfer
+    @fromacc INT,
+    @toacc   INT,
+    @amt     INT
+AS
+BEGIN
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        UPDATE tblbank SET amount = amount - @amt WHERE accno = @fromacc;
+        UPDATE tblbank SET amount = amount + @amt WHERE accno = @toacc;
+        -- test error:  WHERE accno = 'mohan'
+
+        COMMIT TRANSACTION;
+        PRINT 'Transaction Successful !!';
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        PRINT 'Transaction Failed !!';
+    END CATCH
+END;
+```
+
+`EXEC moneytransfer 102, 103, 2000` — dono accounts theek, success.  
+Error wali line pe `ROLLBACK` — **koi account balance nahi khota**.
+
+| Keyword | Matlab |
+|---------|--------|
+| `BEGIN TRANSACTION` | Bundle start. Abhi permanent nahi |
+| `COMMIT TRANSACTION` | Bundle save. Ab permanent |
+| `ROLLBACK TRANSACTION` | Bundle undo. Pehle jaisa |
+| `BEGIN TRY / CATCH` | Error pakdo, crash mat hone do |
+
+> Transaction **bina COMMIT** ke band session me lock / open tran reh sakta hai. Hamesha `COMMIT` ya `ROLLBACK`.
 
 ```sql
 -- Dekhna
@@ -1323,9 +1557,11 @@ SELECT gender, COUNT(*) FROM tblusers GROUP BY gender;
 9. Trigger ke baad audit table check karo.  
 10. `GROUP BY gender` se ginti nikaalo.  
 11. Average se zyada salary wale subquery se dhoondho.  
-12. Emp1 / Emp2 / Emp3 se PK vs Unique test karo.  
+12. 3rd highest salary `DISTINCT TOP 3` se nikaalo.  
+13. Emp1 / Emp2 / Emp3 se PK vs Unique test karo.  
 13. `candidates` me DEFAULT age aur CHECK salary try karo.  
 14. Emp5 (do PK) error vs Emp6 (composite PK) OK.  
-15. `RETURN` se VARCHAR nikaalne ki error dekho, phir `OUTPUT` use karo.
+15. `RETURN` se VARCHAR nikaalne ki error dekho, phir `OUTPUT` use karo.  
+16. `moneytransfer` bina TRAN vs `ROLLBACK` se test karo.
 
 SQL copy-paste ke liye **`sql.text`** kholo.

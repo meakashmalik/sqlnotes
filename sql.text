@@ -416,9 +416,18 @@ SELECT * FROM tblusers WHERE name LIKE 's%';
 SELECT * FROM tblusers WHERE country IN (1, 2);
 SELECT * FROM tblusers WHERE salary BETWEEN 12000 AND 16000;
 
+SELECT * FROM tblusers ORDER BY name;
 SELECT * FROM tblusers ORDER BY salary;
+SELECT * FROM tblusers ORDER BY salary ASC;
 SELECT * FROM tblusers ORDER BY salary DESC;
 SELECT * FROM tblusers ORDER BY country, salary DESC;
+
+SELECT * FROM tblusers WHERE uid = 1 OR uid = 2;
+SELECT * FROM tblusers WHERE uid IN (1, 2);
+
+-- BOTTOM nahi hota: last 3 = ORDER BY uid DESC + TOP 3
+SELECT TOP (3) * FROM tblusers;
+SELECT TOP (3) * FROM tblusers ORDER BY uid DESC;
 
 SELECT DISTINCT gender FROM tblusers;
 SELECT TOP 3 * FROM tblusers ORDER BY salary DESC;
@@ -428,6 +437,11 @@ SELECT TOP 3 * FROM tblusers ORDER BY salary DESC;
 /* ---------- 16. GROUP BY + HAVING ---------- */
 
 SELECT COUNT(*) AS TotalUsers FROM tblusers;
+SELECT MAX(salary) FROM tblusers;
+SELECT MIN(salary) FROM tblusers;
+SELECT SUM(salary) FROM tblusers;
+SELECT AVG(salary) FROM tblusers;
+SELECT COUNT(salary) AS count_salary FROM tblusers;
 SELECT SUM(salary) AS TotalPay, AVG(salary) AS AvgPay FROM tblusers;
 SELECT MIN(salary) AS Lowest, MAX(salary) AS Highest FROM tblusers;
 
@@ -461,9 +475,14 @@ HAVING AVG(salary) > 14000;
 SELECT * FROM tblusers
 WHERE salary = (SELECT MAX(salary) FROM tblusers);
 
-SELECT name, salary
-FROM tblusers
+SELECT name FROM tblusers
+WHERE salary = (SELECT MAX(salary) FROM tblusers);
+
+SELECT * FROM tblusers
 WHERE salary > (SELECT AVG(salary) FROM tblusers);
+
+SELECT name FROM tblusers
+WHERE salary < (SELECT AVG(salary) FROM tblusers);
 
 SELECT name, country
 FROM tblusers
@@ -479,6 +498,24 @@ WHERE U.salary > (
     FROM tblusers X
     WHERE X.country = U.country
 );
+
+-- 3rd highest (aggregate)
+SELECT MIN(salary)
+FROM (SELECT DISTINCT TOP (3) salary FROM tblusers ORDER BY salary DESC) AS A;
+
+-- 3rd highest (bina aggregate) — duplicate salary bhi DISTINCT se
+SELECT TOP (1) salary
+FROM (SELECT DISTINCT TOP (3) salary FROM tblusers ORDER BY salary DESC) AS A
+ORDER BY salary ASC;
+
+-- 4th lowest (aggregate)
+SELECT MAX(salary)
+FROM (SELECT DISTINCT TOP (4) salary FROM tblusers ORDER BY salary) AS A;
+
+-- 4th lowest (bina aggregate)
+SELECT TOP (1) salary
+FROM (SELECT DISTINCT TOP (4) salary FROM tblusers ORDER BY salary) AS A
+ORDER BY salary DESC;
 
 
 
@@ -605,3 +642,52 @@ DECLARE @nx VARCHAR(50), @ny INT;
 EXEC sp7 7, @nx OUT, @ny OUT;
 PRINT @nx;
 PRINT @ny;
+
+
+
+/* ---------- 20. TRANSACTION + TRY/CATCH ---------- */
+
+DROP TABLE IF EXISTS tblbank;
+
+CREATE TABLE tblbank
+(
+    bankid   INT PRIMARY KEY IDENTITY,
+    bankname VARCHAR(50),
+    accname  VARCHAR(50),
+    accno    INT UNIQUE NOT NULL,
+    amount   INT
+);
+
+INSERT INTO tblbank VALUES
+('PNB',    'Akash',    101, 56000),
+('Canara', 'Abhishek', 102, 40000),
+('SBI',    'Surya',    103, 50000);
+
+SELECT * FROM tblbank;
+GO
+
+CREATE PROCEDURE moneytransfer
+    @fromacc INT,
+    @toacc   INT,
+    @amt     INT
+AS
+BEGIN
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        UPDATE tblbank SET amount = amount - @amt WHERE accno = @fromacc;
+        UPDATE tblbank SET amount = amount + @amt WHERE accno = @toacc;
+        -- test fail:  WHERE accno = 'mohan'
+
+        COMMIT TRANSACTION;
+        PRINT 'Transaction Successful !!';
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        PRINT 'Transaction Failed !!';
+    END CATCH
+END;
+GO
+
+EXEC moneytransfer 102, 103, 2000;
+SELECT * FROM tblbank;

@@ -8,12 +8,14 @@ Yeh folder **SQL Server** sikhane ke liye hai. Pehle pictures dekho, phir chhota
 2. Preview on karo (`Ctrl + Shift + V`) taaki pictures aur diagrams dikhein.
 3. SQL copy karke **SQL Server Management Studio (SSMS)** me chalao.
 4. Practice queries `sql.text` me hain.
+5. Interview Q&A: `SQL-INTERVIEW.md`
 
 ## Files
 
 | File | Kya hai |
 |------|---------|
 | [SQL-NOTES.md](SQL-NOTES.md) | Poora lesson — pictures, diagrams, Hindi explanation |
+| [SQL-INTERVIEW.md](SQL-INTERVIEW.md) | Interview sawal — answer, use, example |
 | [sql.text](sql.text) | Sirf SQL practice (copy-paste) |
 | `images/` | Join, GROUP BY, keys, trigger, constraints ki pictures |
 
@@ -32,6 +34,7 @@ flowchart LR
     I --> J[10. Subquery]
     J --> K[11. Constraints]
     K --> L[12. SP RETURN / OUTPUT]
+    L --> M[13. Transaction]
 ```
 
 
