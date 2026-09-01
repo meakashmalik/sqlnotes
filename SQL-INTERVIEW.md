@@ -26,6 +26,7 @@ Poori kahani: [SQL-NOTES.md](SQL-NOTES.md) · Practice: [sql.text](sql.text)
 15. [WHILE loop](#15-while-loop)
 16. [Table se table data transfer](#16-ek-table-se-doosri-me-data)
 17. [Transaction + TRY/CATCH](#17-transaction--trycatch)
+18. [`#temp` vs `##temp`](#18-temp-vs-temp)
 
 ---
 
@@ -634,7 +635,34 @@ BEGIN CATCH
 END CATCH
 ```
 
-```text
+---
+
+## 18. `#temp` vs `##temp`
+
+**Kya hai:** tempdb me temporary table. `#` = is session. `##` = saari sessions.
+
+**Use:** beech ka result; permanent table nahi banana.
+
+| | `#table` | `##table` |
+|--|----------|-----------|
+| Scope | Current session | All sessions |
+| Drop | Session / SP end | Creator session end + koi use nahi |
+| Doosri window | Nahi dikhe | Dikhe |
+| Same naam 2 sessions | OK (unique suffix) | Error |
+| Security | Private | Doosra user dekh sakta hai |
+
+**Fayde:** intermediate data, index, JOIN, auto-clean (`#`).  
+**Nuksaan:** tempdb load; `##` leak + naam clash. Zyada tar **`#` use karo**.
+
+```sql
+SELECT uid, name, salary INTO #highpay FROM tblusers WHERE salary > 15000;
+SELECT * FROM #highpay;
+DROP TABLE #highpay;
+```
+
+---
+
+## 30-second cheat
 CRUD          → INSERT UPDATE DELETE SELECT
 3rd salary    → DISTINCT TOP 3 DESC, phir MIN
 Duplicates    → ROW_NUMBER PARTITION BY … DELETE rn > 1
@@ -651,4 +679,5 @@ CASE          → if-else + ELSE
 WHILE         → counter + BEGIN END
 Copy          → SELECT INTO (naya) / INSERT SELECT (purana)
 Transaction   → BEGIN TRAN … COMMIT ya ROLLBACK; TRY/CATCH
+Temp          → # session, ## global; @table chhoti list
 ```

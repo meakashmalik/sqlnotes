@@ -37,6 +37,7 @@ Interview Q&A (CRUD, 3rd salary, duplicates, WHILE, triggers…): [SQL-INTERVIEW
     - [Sab constraints ek table me](#sab-6-constraints-ek-table-me--candidates)
 19. [SP RETURN vs OUTPUT](#19-sp-return-vs-output)
 20. [Transaction + TRY/CATCH](#20-transaction--trycatch)
+21. [Temp tables `#` vs `##`](#21-temp-tables--vs-)
 
 ---
 
@@ -1523,8 +1524,130 @@ Error wali line pe `ROLLBACK` — **koi account balance nahi khota**.
 
 > Transaction **bina COMMIT** ke band session me lock / open tran reh sakta hai. Hamesha `COMMIT` ya `ROLLBACK`.
 
+---
+
+## 21. Temp tables — `#` vs `##`
+
+Temporary table **tempdb** me banti hai. Permanent database me nahi rehti. Naam ke aage `#` ya `##`.
+
+| | Local `#table` | Global `##table` |
+|--|----------------|------------------|
+| Dikhe kisko? | **Sirf is connection / session** ko | **Saari** sessions ko |
+| Do SSMS tabs | Tab 1 ka `#t` tab 2 me **nahi** dikhega | Dono tabs me same `##t` |
+| Do sessions same naam | Dono `#Emp` bana sakte hain (engine unique suffix lagata hai) | Doosri session `##Emp` banaaye to **error** — naam already hai |
+| Kab drop? | Session band, ya `DROP TABLE #t`. SP ke andar bani ho to SP khatam hote hi drop | Banane wali session band **aur** koi aur session use na kar rahi ho |
+| Data private? | Haan | Nahi — doosra user `SELECT/UPDATE` kar sakta hai |
+
+```mermaid
+flowchart LR
+    subgraph local["#temp  local"]
+        S1[Session A] --> T1["#work"]
+        S2[Session B] --> T2["#work alag copy"]
+    end
+    subgraph global["##temp  global"]
+        A[Session A] --> G["##work ek hi"]
+        B[Session B] --> G
+    end
+```
+
+### Local `#` — example
+
 ```sql
--- Dekhna
+IF OBJECT_ID('tempdb..#highpay') IS NOT NULL DROP TABLE #highpay;
+
+SELECT uid, name, salary
+INTO #highpay
+FROM tblusers
+WHERE salary > 15000;
+
+SELECT * FROM #highpay;
+
+CREATE INDEX IX_highpay_salary ON #highpay (salary);
+
+DROP TABLE #highpay;   -- optional; session band to khud drop
+```
+
+Ya structure pehle:
+
+```sql
+CREATE TABLE #highpay
+(
+    uid    INT,
+    name   VARCHAR(50),
+    salary INT
+);
+INSERT INTO #highpay
+SELECT uid, name, salary FROM tblusers WHERE salary > 15000;
+```
+
+Doosri query window me `SELECT * FROM #highpay` → **Invalid object** (alag session).
+
+### Global `##` — example
+
+```sql
+IF OBJECT_ID('tempdb..##allpay') IS NOT NULL DROP TABLE ##allpay;
+
+SELECT uid, name, salary INTO ##allpay FROM tblusers;
+
+-- doosri SSMS window me yeh chalega:
+SELECT * FROM ##allpay;
+```
+
+Jo window ne `##allpay` banayi, woh **band** kar do. Agar koi aur window use nahi kar rahi → table **udh jaati hai**.
+
+---
+
+### Fayde (dono temp tables)
+
+- Beech ka result store — lambi query tod kar steps me
+- Permanent table ki gandagi nahi (`CREATE TABLE` production me nahi)
+- Normal table jaisi: `JOIN`, `UPDATE`, `INDEX`, `PK`
+- Bade data par optimizer **statistics** use karta hai (table variable `@t` se better)
+- Session khatam → local `#` khud saaf
+
+### Nuksaan (dono)
+
+- **tempdb** par load — kai users saath me to slow / contention
+- Disk + log likhte hain
+- Script dobara chalao to “already exists” — pehle `DROP` ya `IF OBJECT_ID ... DROP`
+- Production schema me nahi, lekin galat `##` se data leak ho sakta hai
+
+### Extra nuksaan — sirf `##`
+
+- Doosri connection dekh / badal sakti hai (**security**)
+- Naam clash: `##report` pehle se ho to tumhari script fail
+- Session band hone par doosra user ka kaam toot sakta hai
+- Rare use; zyada tar **`#` hi kaafi**
+
+### Extra nuksaan — sirf `#`
+
+- Doosri session / doosri SP call (alag connection) me **share nahi**
+- Nested: jo `#` **andar wali SP** ne banayi, bahar wali SP ko nahi dikhegi. Bahar ne banayi ho to andar dikh sakti hai
+
+---
+
+### Related: table variable `@table` (interview)
+
+```sql
+DECLARE @t TABLE (uid INT, name VARCHAR(50));
+INSERT INTO @t SELECT uid, name FROM tblusers;
+SELECT * FROM @t;
+```
+
+`@t` batch / SP ke scope me. Index / stats limited. Chhote lists ke liye. Bade data ke liye **`#temp`**.
+
+| | `#temp` | `##temp` | `@table` |
+|--|---------|----------|----------|
+| Scope | Session | Server (saari sessions) | Batch / SP |
+| Indexes / stats | Haan | Haan | Limited |
+| Doosri window | Nahi | Haan | Nahi |
+| Auto drop | Session / SP end | Creator session end + koi use nahi | Batch end |
+
+**Rule:** beech ka kaam → `#`. Share across connections (soche ke) → `##`. Chhoti list SP me → `@`.
+
+---
+
+## Roz ka cheat-sheet
 SELECT * FROM tblusers WHERE country = 1;
 
 -- Jodna
@@ -1562,6 +1685,7 @@ SELECT gender, COUNT(*) FROM tblusers GROUP BY gender;
 13. `candidates` me DEFAULT age aur CHECK salary try karo.  
 14. Emp5 (do PK) error vs Emp6 (composite PK) OK.  
 15. `RETURN` se VARCHAR nikaalne ki error dekho, phir `OUTPUT` use karo.  
-16. `moneytransfer` bina TRAN vs `ROLLBACK` se test karo.
+16. `moneytransfer` bina TRAN vs `ROLLBACK` se test karo.  
+17. `#highpay` banao; doosri window me fail, `##` me pass check karo.
 
 SQL copy-paste ke liye **`sql.text`** kholo.

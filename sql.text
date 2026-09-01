@@ -691,3 +691,29 @@ GO
 
 EXEC moneytransfer 102, 103, 2000;
 SELECT * FROM tblbank;
+
+
+
+/* ---------- 21. TEMP TABLES  # vs ## ---------- */
+
+IF OBJECT_ID('tempdb..#highpay') IS NOT NULL DROP TABLE #highpay;
+
+SELECT uid, name, salary
+INTO #highpay
+FROM tblusers
+WHERE salary > 15000;
+
+SELECT * FROM #highpay;
+-- doosri SSMS window: SELECT * FROM #highpay  → error (local)
+
+DROP TABLE #highpay;
+
+
+IF OBJECT_ID('tempdb..##allpay') IS NOT NULL DROP TABLE ##allpay;
+
+SELECT uid, name, salary INTO ##allpay FROM tblusers;
+SELECT * FROM ##allpay;
+-- doosri window me ##allpay dikhega
+-- ye window band → ## drop (agar koi aur use nahi)
+
+DROP TABLE IF EXISTS ##allpay;
