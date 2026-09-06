@@ -717,3 +717,43 @@ SELECT * FROM ##allpay;
 -- ye window band → ## drop (agar koi aur use nahi)
 
 DROP TABLE IF EXISTS ##allpay;
+
+
+
+/* ---------- DUPLICATE DELETE: MAX(id) + GROUP BY ---------- */
+
+DROP TABLE IF EXISTS students;
+
+CREATE TABLE students
+(
+    id   INT PRIMARY KEY IDENTITY,
+    name VARCHAR(50),
+    city VARCHAR(50),
+    age  INT
+);
+
+INSERT INTO students VALUES
+('Mohan',   'noida',  35),
+('Mohan',   'noida',  35),
+('Mohan',   'noida',  35),
+('Mohnika', 'kanpur', 34),
+('Mohnika', 'kanpur', 34),
+('Sunita',  'delhi',  30),
+('Sunita',  'delhi',  30),
+('Sunita',  'delhi',  30),
+('alok',    'noida',  37),
+('alok',    'noida',  37);
+
+SELECT * FROM students;
+
+-- har (name,city,age) me sabse bada id rakho, baaki delete
+DELETE FROM students
+WHERE id NOT IN (
+    SELECT maxid FROM (
+        SELECT MAX(id) AS maxid
+        FROM students
+        GROUP BY name, city, age
+    ) AS t
+);
+
+SELECT * FROM students;

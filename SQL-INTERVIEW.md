@@ -109,38 +109,98 @@ WHERE salary = (
 
 **Use:** import / galat insert se repeats aa jaate hain.
 
+Yeh **ek hi topic** hai. Interview me 2 common tarike poochte hain:
+
+| Tarika | Idea | Kaunsi row bachti hai |
+|--------|------|------------------------|
+| `MAX(id) + GROUP BY + NOT IN` | Har group ka sabse bada `id` rakho | Last insert |
+| `ROW_NUMBER()` | Har group me number 1, 2, 3… | `ORDER BY` jo choose karo |
+
 Pehle duplicates dekho:
 
 ```sql
-SELECT name, gender, salary, dob, country, COUNT(*) AS Kitne
-FROM tblusers
-GROUP BY name, gender, salary, dob, country
+SELECT name, city, age, COUNT(*) AS Kitne
+FROM students
+GROUP BY name, city, age
 HAVING COUNT(*) > 1;
 ```
 
-**SQL Server — extra rows delete** (`ROW_NUMBER`): pehli row `rn = 1`, baaki delete.
+### Class tarika — `MAX(id)` + `NOT IN`
+
+`id` alag hai (PK IDENTITY), lekin `name, city, age` same = duplicate.
+
+`GROUP BY name, city, age` se har group ka **sabse bada id** nikaalo. Jo `id` us list me **nahi**, unhe delete.
+
+```sql
+CREATE TABLE students
+(
+    id   INT PRIMARY KEY IDENTITY,
+    name VARCHAR(50),
+    city VARCHAR(50),
+    age  INT
+);
+
+INSERT INTO students VALUES
+('Mohan',   'noida',  35),
+('Mohan',   'noida',  35),
+('Mohan',   'noida',  35),
+('Mohnika', 'kanpur', 34),
+('Mohnika', 'kanpur', 34),
+('Sunita',  'delhi',  30),
+('Sunita',  'delhi',  30),
+('Sunita',  'delhi',  30),
+('alok',    'noida',  37),
+('alok',    'noida',  37);
+
+-- rakhna: har group ka MAX(id)   hatana: baaki
+DELETE FROM students
+WHERE id NOT IN (
+    SELECT MAX(id) FROM students GROUP BY name, city, age
+);
+```
+
+SQL Server kabhi same-table subquery pe error de to andar ek extra table wrap karo:
+
+```sql
+DELETE FROM students
+WHERE id NOT IN (
+    SELECT maxid FROM (
+        SELECT MAX(id) AS maxid
+        FROM students
+        GROUP BY name, city, age
+    ) AS t
+);
+```
+
+Purani row rakhni ho to `MAX` ki jagah `MIN(id)`.
+
+### `ROW_NUMBER` tarika
+
+Pehli row `rn = 1`, baaki delete.
 
 ```sql
 WITH cte AS (
     SELECT *,
            ROW_NUMBER() OVER (
-               PARTITION BY name, gender, salary, dob, country
-               ORDER BY uid
+               PARTITION BY name, city, age
+               ORDER BY id
            ) AS rn
-    FROM tblusers
+    FROM students
 )
 DELETE FROM cte WHERE rn > 1;
 ```
 
-**Doosra tarika — saaf copy naya table:**
+`tblusers` par same idea: `PARTITION BY name, gender, salary, dob, country`.
+
+### Nayi table me saaf copy
 
 ```sql
-SELECT DISTINCT name, gender, salary, dob, country
-INTO tblusers_clean
-FROM tblusers;
+SELECT DISTINCT name, city, age
+INTO students_clean
+FROM students;
 ```
 
-`IDENTITY` / `uid` alag-alag ho to `DISTINCT *` kaam nahi karega — isliye columns specify karo.
+`IDENTITY` / `id` alag-alag ho to `DISTINCT *` kaam nahi karega — columns specify karo.
 
 ---
 
@@ -665,7 +725,7 @@ DROP TABLE #highpay;
 ## 30-second cheat
 CRUD          → INSERT UPDATE DELETE SELECT
 3rd salary    → DISTINCT TOP 3 DESC, phir MIN
-Duplicates    → ROW_NUMBER PARTITION BY … DELETE rn > 1
+Duplicates    → MAX(id)+GROUP BY+NOT IN  ya  ROW_NUMBER rn>1
 LIKE          → % start/end/beech, _ ek char
 SP vs FN      → EXEC vs SELECT dbo.fn; SP CRUD, FN calculate
 JOIN          → INNER match, LEFT saari left, FULL dono
