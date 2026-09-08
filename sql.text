@@ -3,7 +3,6 @@
    Poori kahani + pictures:  SQL-NOTES.md
    ============================================================ */
 
-
 /* ---------- 1. DATABASE AUR TABLES ---------- */
 
 CREATE DATABASE db5152_6826;
