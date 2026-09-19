@@ -1,5 +1,6 @@
 # SQL Server Notes
 
+
 Yeh folder **SQL Server** sikhane ke liye hai. Pehle pictures dekho, phir chhota example, phir SQL.
 
 ## Kaise padhein
