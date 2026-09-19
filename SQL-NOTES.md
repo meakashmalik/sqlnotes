@@ -642,7 +642,6 @@ Parameters = ingredients.
 CREATE PROCEDURE sp_GetAllUsers
 AS
 BEGIN
-    SET NOCOUNT ON;   -- extra "n rows" message band
     SELECT uid, name, gender, salary, dob, country FROM tblusers;
 END;
 
@@ -660,8 +659,6 @@ CREATE PROCEDURE sp_InsertUser
     @country INT
 AS
 BEGIN
-    SET NOCOUNT ON;
-
     INSERT INTO tblusers (name, gender, salary, dob, country)
     VALUES (@name, @gender, @salary, @dob, @country);
 
@@ -676,6 +673,47 @@ EXEC sp_InsertUser
     @country = 1;
 ```
 
+### `GO` aur `SET NOCOUNT` (alag example)
+
+CRUD SP me yeh do cheezein **logic ka hissa nahi**. SSMS scripts aur production me aksar dikhti hain.
+
+**`GO`** SQL ka keyword nahi — SSMS ka **batch todne** wala signal. Pehli batch khatam, agla alag packet.
+
+Kyun: `CREATE PROCEDURE` ke baad same batch me `EXEC` / doosri `CREATE` fail ho sakti hai. `GO` lagao, phir `EXEC`.
+
+SP ke **andar** `GO` mat likho.
+
+```sql
+CREATE PROCEDURE sp_GetAllUsers
+AS
+BEGIN
+    SELECT uid, name FROM tblusers;
+END;
+GO                 -- pehli batch khatam — SP ban gayi
+
+EXEC sp_GetAllUsers;
+```
+
+**`SET NOCOUNT ON`:** SQL Server har INSERT/UPDATE pe `(1 row affected)` bhejta hai. Apps is extra message se confuse ho sakti hain. `NOCOUNT ON` = yeh message band; data wahi.
+
+Production SP me almost **hamesha** pehli line yeh hi hoti hai.
+
+```sql
+CREATE PROCEDURE sp_InsertUser
+    @name VARCHAR(50),
+    @gender VARCHAR(50),
+    @salary INT,
+    @dob DATE,
+    @country INT
+AS
+BEGIN
+    SET NOCOUNT ON;    -- (n row affected) mat bhejo
+
+    INSERT INTO tblusers (name, gender, salary, dob, country)
+    VALUES (@name, @gender, @salary, @dob, @country);
+END;
+```
+
 ### OUTPUT — jawab bahar laana
 
 ```sql
@@ -684,7 +722,6 @@ CREATE PROCEDURE sp_GetUserStats
     @AvgSalary  INT OUTPUT
 AS
 BEGIN
-    SET NOCOUNT ON;
     SELECT
         @TotalUsers = COUNT(*),
         @AvgSalary  = AVG(salary)

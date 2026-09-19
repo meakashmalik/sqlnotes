@@ -267,24 +267,22 @@ WHERE country = 1 AND (gender = 'male' OR salary > 18000);
 **Use:** app se table directly nahi, SP se CRUD — security + reuse.
 
 ```sql
--- SELECT
+-- SELECT (saare users)
 CREATE PROCEDURE sp_GetAllUsers
 AS
 BEGIN
-    SET NOCOUNT ON;
     SELECT uid, name, gender, salary, dob, country FROM tblusers;
 END;
-GO
+
 EXEC sp_GetAllUsers;
 
 -- SELECT by id
 CREATE PROCEDURE sp_GetUserById @uid INT
 AS
 BEGIN
-    SET NOCOUNT ON;
     SELECT * FROM tblusers WHERE uid = @uid;
 END;
-GO
+
 EXEC sp_GetUserById 1;
 
 -- INSERT
@@ -293,33 +291,99 @@ CREATE PROCEDURE sp_InsertUser
     @dob DATE, @country INT
 AS
 BEGIN
-    SET NOCOUNT ON;
     INSERT INTO tblusers (name, gender, salary, dob, country)
     VALUES (@name, @gender, @salary, @dob, @country);
 END;
-GO
+
 EXEC sp_InsertUser 'Rohan', 'male', 22000, '1995-05-12', 1;
 
 -- UPDATE
 CREATE PROCEDURE sp_UpdateSalary @uid INT, @salary INT
 AS
 BEGIN
-    SET NOCOUNT ON;
     UPDATE tblusers SET salary = @salary WHERE uid = @uid;
 END;
-GO
+
 EXEC sp_UpdateSalary 1, 25000;
 
 -- DELETE
 CREATE PROCEDURE sp_DeleteUser @uid INT
 AS
 BEGIN
-    SET NOCOUNT ON;
     DELETE FROM tblusers WHERE uid = @uid;
 END;
-GO
+
 EXEC sp_DeleteUser 99;
 ```
+
+### `GO` aur `SET NOCOUNT` — alag se samjho
+
+CRUD examples me yeh do cheezein **zaroori nahi**. Real projects / SSMS scripts me aksar dikhti hain, isliye alag se.
+
+#### `GO` kya hai?
+
+`GO` **SQL language ka keyword nahi** hai. Yeh **SSMS / sqlcmd** ka batch separator hai.
+
+Matlab: yahan tak ka script **alag packet** banao, pehle yeh chalao, phir agla.
+
+**Kyun use:** `CREATE PROCEDURE` ke **turant baad** same batch me `EXEC` / doosri `CREATE` kabhi error deti hai. `GO` se pehle procedure ban jaati hai, phir next batch me `EXEC`.
+
+```sql
+CREATE PROCEDURE sp_GetAllUsers
+AS
+BEGIN
+    SELECT uid, name, gender, salary, dob, country FROM tblusers;
+END;
+GO                  -- yahan pehli batch khatam — SP ab ban chuki
+
+EXEC sp_GetAllUsers;
+GO
+
+CREATE PROCEDURE sp_GetUserById @uid INT
+AS
+BEGIN
+    SELECT * FROM tblusers WHERE uid = @uid;
+END;
+GO
+
+EXEC sp_GetUserById 1;
+```
+
+> `GO` ko stored procedure ke **andar** mat likho. Sirf script ke batches todne ke liye.
+
+#### `SET NOCOUNT ON` kya hai?
+
+Har `INSERT` / `UPDATE` / `DELETE` / `SELECT` ke baad SQL Server message bhejta hai: **`(1 row affected)`**.
+
+App (C# / ADO.NET) kabhi is extra message ko **pehla result** samajh leti hai — confusion / extra round-trip.
+
+`SET NOCOUNT ON` = yeh “n rows affected” message **band**. Data wahi aata hai, sirf extra chatter nahi.
+
+**Kyun hamesha SP me lagate hain:** production procedures me almost standard. Performance thodi better, client apps clean.
+
+```sql
+CREATE PROCEDURE sp_InsertUser
+    @name VARCHAR(50),
+    @gender VARCHAR(50),
+    @salary INT,
+    @dob DATE,
+    @country INT
+AS
+BEGIN
+    SET NOCOUNT ON;   -- (1 row affected) mat bhejo
+
+    INSERT INTO tblusers (name, gender, salary, dob, country)
+    VALUES (@name, @gender, @salary, @dob, @country);
+END;
+```
+
+| | Bina `NOCOUNT` | `SET NOCOUNT ON` |
+|--|----------------|------------------|
+| Messages | `(1 row affected)` dikhega | nahi |
+| SELECT data | aata hai | aata hai |
+| App / SP best practice | extra noise | **yahi use karo** |
+
+`SET NOCOUNT OFF` default hai — messages wapas on.
 
 ---
 
