@@ -4,6 +4,44 @@ Aaj jo sawal aaye, wahi yahan **ek jagah**. Har topic: 30-second jawab → examp
 
 Machine test me C# program **Console App** me type karna: `dotnet new console` ya Visual Studio → Console.
 
+Neeche **sample data** + har query/program ka **output** hai. Interview me “result kya aayega?” isi se bolo.
+
+---
+
+## Sample data (SQL — yeh tables assume karo)
+
+**tblcountry**
+
+| cid | cname |
+|-----|--------|
+| 1 | India |
+| 2 | Pakistan |
+| 3 | usa |
+| 4 | Brazil |
+
+Brazil ka **koi user nahi**.
+
+**tblusers**
+
+| uid | name | gender | salary | country |
+|-----|------|--------|--------|---------|
+| 1 | alok | male | 13000 | 1 |
+| 2 | monika | female | 15000 | 2 |
+| 3 | javed | male | 11000 | 3 |
+| 4 | seema | female | 17000 | 2 |
+| 5 | madhu | female | 19000 | NULL |
+
+`madhu` ki country nahi — LEFT/FULL me dikhegi, INNER me nahi.
+
+**Users** (SELF JOIN)
+
+| uid | uname | umanager |
+|-----|--------|----------|
+| 1 | alok | 3 |
+| 2 | amit | 4 |
+| 3 | javed | 1 |
+| 4 | priya | 1 |
+
 ---
 
 ## Index
@@ -57,6 +95,32 @@ FROM Users E
 JOIN Users M ON M.uid = E.umanager;
 ```
 
+**Output — INNER** (`name`, `cname`) — madhu nahi (country NULL):
+
+| name | cname |
+|------|--------|
+| alok | India |
+| monika | Pakistan |
+| javed | usa |
+| seema | Pakistan |
+
+**Output — LEFT** (short): 4 matched + madhu with `cname = NULL`.
+
+**Output — RIGHT:** 4 matched + **Brazil** with user columns `NULL`.
+
+**Output — FULL:** madhu (no country) **aur** Brazil (no user).
+
+**Output — CROSS:** 5 users × 4 countries = **20 rows**.
+
+**Output — SELF JOIN:**
+
+| Emp | Manager |
+|-----|---------|
+| alok | javed |
+| amit | priya |
+| javed | alok |
+| priya | alok |
+
 | Type | Bolna |
 |------|--------|
 | INNER | sirf common |
@@ -75,6 +139,12 @@ LEFT JOIN tblcountry C ON U.country = C.cid
 WHERE C.cid IS NULL;
 ```
 
+**Output:**
+
+| uid | name | gender | salary | country |
+|-----|------|--------|--------|---------|
+| 5 | madhu | female | 19000 | NULL |
+
 **Machine test tip:** `ON` pe column names clear rakho. Same naam ho to `U.country = C.cid`. Alias `name1`, `name2`.
 
 ---
@@ -89,6 +159,11 @@ WHERE C.cid IS NULL;
 | Speed | slow (sort/distinct) | fast |
 | Kab | unique list chahiye | ginti / saari rows chahiye |
 
+Pehle alag-alag:
+
+`WHERE country = 1` → `alok`  
+`WHERE country = 2` → `monika`, `seema`
+
 ```sql
 -- India + Pakistan users ke naam (unique)
 SELECT name FROM tblusers WHERE country = 1
@@ -100,6 +175,37 @@ SELECT name FROM tblusers WHERE country = 1
 UNION ALL
 SELECT name FROM tblusers WHERE country = 2;
 ```
+
+Yahan teeno naam alag hain, isliye UNION aur UNION ALL **same 3 rows**: alok, monika, seema.
+
+Duplicate dikhane ke liye:
+
+```sql
+SELECT name FROM tblusers WHERE gender = 'male'
+UNION
+SELECT name FROM tblusers WHERE country = 1;
+
+SELECT name FROM tblusers WHERE gender = 'male'
+UNION ALL
+SELECT name FROM tblusers WHERE country = 1;
+```
+
+Male = `alok`, `javed`. Country 1 = `alok`.
+
+**Output UNION** (unique):
+
+| name |
+|------|
+| alok |
+| javed |
+
+**Output UNION ALL** (alok do baar):
+
+| name |
+|------|
+| alok |
+| javed |
+| alok |
 
 Column count same:
 
@@ -137,6 +243,17 @@ JOIN tblcountry C ON U.country = C.cid;
 
 SELECT * FROM vw_UserDetails;
 SELECT * FROM vw_UserDetails WHERE CountryName = 'India';
+
+-- Output SELECT *  (salary nahi — hide):
+-- uid | UserName | gender | CountryName
+-- 1   | alok     | male   | India
+-- 2   | monika   | female | Pakistan
+-- 3   | javed    | male   | usa
+-- 4   | seema    | female | Pakistan
+-- madhu INNER JOIN me nahi
+
+-- Output WHERE India:
+-- 1 | alok | male | India
 
 ALTER VIEW vw_UserDetails
 AS
@@ -185,6 +302,33 @@ GROUP BY gender
 HAVING COUNT(*) > 3;
 ```
 
+**Output — gender count** (5 users: 2 male, 3 female):
+
+| gender | Kitne |
+|--------|-------|
+| male | 2 |
+| female | 3 |
+
+**Output — by country** (madhu country NULL — SQL Server me alag NULL group):
+
+| country | Kitne | AvgSal |
+|---------|-------|--------|
+| 1 | 1 | 13000 |
+| 2 | 2 | 16000 |
+| 3 | 1 | 11000 |
+| NULL | 1 | 19000 |
+
+**Output — cname** (INNER, madhu nahi):
+
+| cname | Kitne | AvgSal |
+|--------|-------|--------|
+| India | 1 | 13000 |
+| Pakistan | 2 | 16000 |
+| usa | 1 | 11000 |
+
+**Output — HAVING COUNT(*) > 3:** empty (kisi gender me 3 se zyada nahi).  
+Is data pe `HAVING COUNT(*) >= 3` → female, 3.
+
 Order: `FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY`
 
 **Galat:** `SELECT name, COUNT(*) FROM tblusers GROUP BY gender;`  
@@ -219,7 +363,16 @@ class Employee
 Employee e = new Employee();
 e.Salary = 13000;   // OK
 e.Salary = -5;      // reject
+Console.WriteLine(e.Salary);
 ```
+
+**Output:**
+
+```text
+13000
+```
+
+(`-5` set nahi hua.)
 
 **Bolna:** `e.salary = -5` na ho sake.
 
@@ -239,7 +392,18 @@ class Car
     private void CheckFuel() { }
     private void Spark() { }
 }
+
+Car c = new Car();
+c.Start();
 ```
+
+**Output:**
+
+```text
+Started
+```
+
+(`CheckFuel` / `Spark` print nahi — chhupi hui.)
 
 | Encapsulation | Abstraction |
 |---------------|-------------|
@@ -267,6 +431,13 @@ Manager m = new Manager();
 m.Name = "alok";
 m.Work();
 m.Lead();
+```
+
+**Output:**
+
+```text
+alok working
+alok leads
 ```
 
 C#: **ek hi class** inherit. Kai contracts → **interface**.
@@ -316,6 +487,13 @@ log = new DbLogger();
 log.Log("saved");
 ```
 
+**Output:**
+
+```text
+File: saved
+DB: saved
+```
+
 `new ILogger()` **nahi**. Prefix `I`.
 
 ---
@@ -347,6 +525,15 @@ Payment p = new UpiPayment();  // variable parent, object child
 p.Pay(500);
 p.Receipt();
 ```
+
+**Output:**
+
+```text
+UPI 500
+Receipt
+```
+
+`new Payment()` compile error.
 
 ---
 
@@ -407,6 +594,13 @@ public ActionResult Index()
 <p>Count: @ViewData["Count"]</p>
 ```
 
+**Browser output:**
+
+```text
+Users
+Count: 10
+```
+
 **ViewBag** — wahi data, property jaisa (wrapper over ViewData).
 
 ```csharp
@@ -442,6 +636,14 @@ public ActionResult Index()
 }
 ```
 
+Save ke baad Index page:
+
+```text
+User saved
+```
+
+Dobara refresh pe message **gayab** (TempData ek baar).
+
 **Bolna:** same page → ViewBag/ViewData. Redirect / “saved successfully” → **TempData**. Session lamba; yeh short.
 
 ---
@@ -468,10 +670,23 @@ const int Max = 100;          // badal nahi sakte
 ```csharp
 int a = 10;
 int b = a;
-b = 20;           // a abhi 10
+b = 20;
+Console.WriteLine(a);  // 10  copy
+Console.WriteLine(b);  // 20
 
 Employee e1 = new Employee();
-Employee e2 = e1; // same object
+e1.Name = "temp";
+Employee e2 = e1;
+e2.Name = "alok";
+Console.WriteLine(e1.Name);  // alok — same object
+```
+
+**Output:**
+
+```text
+10
+20
+alok
 ```
 
 Scope: method ke andar local. `public int Salary` = field. Property alag.
@@ -501,6 +716,14 @@ class Program
         Console.WriteLine("Sum = " + sum);
     }
 }
+```
+
+**Screen (input 10 aur 20):**
+
+```text
+Pehla number: 10
+Doosra number: 20
+Sum = 30
 ```
 
 Bina input (agar jaldi chahiye):
@@ -542,6 +765,14 @@ class Program
 }
 ```
 
+**Screen (input 50 aur 20):**
+
+```text
+Pehla number: 50
+Doosra number: 20
+Difference = 30
+```
+
 ---
 
 ## 13. Machine test — 1 to 10 print
@@ -562,6 +793,23 @@ class Program
     }
 }
 ```
+
+**Output:**
+
+```text
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+```
+
+`Console.Write(i + " ");` → `1 2 3 4 5 6 7 8 9 10`
 
 **while** (agar poochhein)
 
